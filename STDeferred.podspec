@@ -1,8 +1,8 @@
 Pod::Spec.new do |s|
-  s.name     = "STDeferred"
+  s.name     = "STDeferred-swift"
   s.version  = "1.0"
   s.summary  = "STDeferred is simple implementation of Deferred object."
-  s.homepage = "https://github.com/saiten/STDeferred"
+  s.homepage = "https://github.com/saiten/STDeferred-swift"
 
   s.author = { "saiten" => "saiten@isidesystem.net" }
 
@@ -11,8 +11,7 @@ Pod::Spec.new do |s|
 
   s.source_files = "STDeferred/*.swift"
   s.source = {
-      :git => "https://github.com/saiten/STDeferred.git",
-      :tag => "swift-2.0",
+      :git => "https://github.com/saiten/STDeferred-swift.git"
   }
 
   s.license = {
@@ -25,5 +24,5 @@ Pod::Spec.new do |s|
     LICENSE
   }
 
-  s.dependency "Result", "~> 0.6-beta.1"
+  s.dependency "Result", "1.0.1"
 end

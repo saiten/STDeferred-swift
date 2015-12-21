@@ -1,4 +1,4 @@
-# STDeferred 1.0
+# STDeferred-Swift 1.0
 
 Swift simple implementation of deferred object
 
@@ -6,7 +6,7 @@ Swift simple implementation of deferred object
 
 ### Carthage
 
-1. Insert `github "saiten/STDeferred" "swift-2.0"` to your Cartfile.
+1. Insert `github "saiten/STDeferred-swift"` to your Cartfile.
 2. Run `carthage update`
 3. Link your app with STDeferred.framework and Result.framework in Carthage/Checkouts.
 
