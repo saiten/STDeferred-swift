@@ -1,5 +1,5 @@
 Pod::Spec.new do |s|
-  s.name     = "STDeferred-swift"
+  s.name     = "STDeferred"
   s.version  = "1.0"
   s.summary  = "STDeferred is simple implementation of Deferred object."
   s.homepage = "https://github.com/saiten/STDeferred-swift"
