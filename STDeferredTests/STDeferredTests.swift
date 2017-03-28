@@ -9,11 +9,11 @@ import XCTest
 import STDeferred
 import Result
 
-private enum TestError : String, ErrorType {
-    case Fail = "fail"
-    case First = "first"
-    case Second = "second"
-    case Third = "third"
+private enum TestError : String, Error {
+    case fail = "fail"
+    case first = "first"
+    case second = "second"
+    case third = "third"
 }
 
 class STDeferredTest: XCTestCase {
@@ -32,10 +32,12 @@ class STDeferredTest: XCTestCase {
         deferred
         .success { (value) in
             XCTAssertEqual("success", value)
-            XCTAssertEqual(1, count++)
+            XCTAssertEqual(1, count)
+            count += 1
         }.success { (value) in
             XCTAssertEqual("success", value)
-            XCTAssertEqual(2, count++)
+            XCTAssertEqual(2, count)
+            count += 1
         }.failure { (error) in
             XCTFail()
         }.resolve("success")
@@ -64,18 +66,20 @@ class STDeferredTest: XCTestCase {
             XCTFail()
         }.failure { (error) in
             XCTAssertEqual("fail", error!.rawValue)
-            XCTAssertEqual(1, count++)
+            XCTAssertEqual(1, count)
+            count += 1
         }.failure { (error) in
             XCTAssertEqual("fail", error!.rawValue)
-            XCTAssertEqual(2, count++)
-        }.reject(.Fail)
+            XCTAssertEqual(2, count)
+            count += 1
+        }.reject(.fail)
         
         XCTAssertEqual(3, count)
     }
     
     func testFailureAfterReject() {
         let deferred = Deferred<String, TestError>()
-        deferred.reject(.Fail)
+        deferred.reject(.fail)
         
         deferred
         .success { (value) in
@@ -95,9 +99,9 @@ class STDeferredTest: XCTestCase {
         }
         .complete { (result) in
             switch result! {
-            case .Success(let value):
+            case .success(let value):
                 XCTAssertEqual("hoge", value)
-            case .Failure:
+            case .failure:
                 XCTFail()
             }
         }
@@ -112,13 +116,13 @@ class STDeferredTest: XCTestCase {
         }
         .complete { (result) in
             switch result! {
-            case .Success:
+            case .success:
                 XCTFail()
-            case .Failure(let error):
+            case .failure(let error):
                 XCTAssertEqual("fail", error.rawValue)
             }
         }
-        .reject(.Fail)
+        .reject(.fail)
     }
     
     
@@ -135,15 +139,15 @@ class STDeferredTest: XCTestCase {
         }
         .complete { (result) in
             switch result! {
-            case .Success(let value):
+            case .success(let value):
                 XCTAssertEqual("hoge", value)
-            case .Failure:
+            case .failure:
                 XCTFail()
             }
         }
 
         let deferred2 = Deferred<String, TestError>()
-        deferred2.reject(.Fail)
+        deferred2.reject(.fail)
         
         deferred2
         .success { (value) in
@@ -154,17 +158,17 @@ class STDeferredTest: XCTestCase {
         }
         .complete { (result) in
             switch result! {
-            case .Success:
+            case .success:
                 XCTFail()
-            case .Failure(let error):
+            case .failure(let error):
                 XCTAssertEqual("fail", error.rawValue)
             }
         }
-        .reject(.Fail)
+        .reject(.fail)
     }
 
     func testPipe() {
-        let expectation = self.expectationWithDescription("testPipe")
+        let expectation = self.expectation(description: "testPipe")
 
         var count = 0
         
@@ -172,45 +176,47 @@ class STDeferredTest: XCTestCase {
         deferred
         .pipe { (result) -> Deferred<Int, TestError> in
             switch result! {
-            case .Success(let value):
+            case .success(let value):
                 XCTAssertEqual("start", value)
-            case .Failure:
+            case .failure:
                 XCTFail()
             }
             let d2 = Deferred<Int, TestError>()
             
-            let delay = 1.0 * Double(NSEC_PER_SEC)
-            let popTime = dispatch_time(DISPATCH_TIME_NOW, Int64(delay))
-            
-            dispatch_after(popTime, dispatch_get_main_queue()) {
-                XCTAssertEqual(1, count++)
+            DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + Double(Int64(1 * NSEC_PER_SEC)) / Double(NSEC_PER_SEC)) {
+                XCTAssertEqual(1, count)
+                count += 1
                 d2.resolve(12345)
             }
+            
             return d2
         }
         .pipe { (result) -> Result<String, TestError>? in
             switch result! {
-            case .Success(let value):
+            case .success(let value):
                 XCTAssertEqual(12345, value)
-            case .Failure:
+            case .failure:
                 XCTFail()
             }
-            XCTAssertEqual(2, count++)
+            XCTAssertEqual(2, count)
+            count += 1
             return Result<String, TestError>(value: "second")
         }
         .pipe { (result) -> Result<String, TestError>? in
             switch result! {
-            case .Success(let value):
+            case .success(let value):
                 XCTAssertEqual("second", value)
-            case .Failure:
+            case .failure:
                 XCTFail()
             }
-            XCTAssertEqual(3, count++)
+            XCTAssertEqual(3, count)
+            count += 1
             return Result<String, TestError>(value: "third")
         }
         .success { (value) in
             XCTAssertEqual("third", value)
-            XCTAssertEqual(4, count++)
+            XCTAssertEqual(4, count)
+            count += 1
             expectation.fulfill()
         }
         .failure { (error) in
@@ -218,13 +224,14 @@ class STDeferredTest: XCTestCase {
         }
     
         deferred.resolve("start")
-        XCTAssertEqual(0, count++)
+        XCTAssertEqual(0, count)
+        count += 1
     
-        self.waitForExpectationsWithTimeout(5.0) { (error) in }
+        self.waitForExpectations(timeout: 5.0) { (error) in }
     }
     
     func testPipeFailure() {
-        let expectation = self.expectationWithDescription("testPipeFailure")
+        let expectation = self.expectation(description: "testPipeFailure")
         
         var count = 0
         
@@ -232,59 +239,62 @@ class STDeferredTest: XCTestCase {
         deferred
         .pipe { (result) -> Deferred<Int, TestError> in
             switch result! {
-            case .Success:
+            case .success:
                 XCTFail()
-            case .Failure(let error):
+            case .failure(let error):
                 XCTAssertEqual("fail", error.rawValue)
             }
             let d2 = Deferred<Int, TestError>()
             
-            let delay = 1.0 * Double(NSEC_PER_SEC)
-            let popTime = dispatch_time(DISPATCH_TIME_NOW, Int64(delay))
-            
-            dispatch_after(popTime, dispatch_get_main_queue()) {
-                XCTAssertEqual(1, count++)
-                d2.reject(TestError.First)
+            DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + Double(Int64(1 * NSEC_PER_SEC)) / Double(NSEC_PER_SEC)) {
+                XCTAssertEqual(1, count)
+                count += 1
+                d2.reject(TestError.first)
             }
+            
             return d2
         }
         .pipe { (result) -> Result<String, TestError>? in
             switch result! {
-            case .Success:
+            case .success:
                 XCTFail()
-            case .Failure(let error):
+            case .failure(let error):
                 XCTAssertEqual("first", error.rawValue)
             }
-            XCTAssertEqual(2, count++)
-            return Result<String, TestError>(error: TestError.Second)
+            XCTAssertEqual(2, count)
+            count += 1
+            return Result<String, TestError>(error: TestError.second)
         }
         .pipe { (result) -> Result<String, TestError>? in
             switch result! {
-            case .Success:
+            case .success:
                 XCTFail()
-            case .Failure(let error):
+            case .failure(let error):
                 XCTAssertEqual("second", error.rawValue)
             }
-            XCTAssertEqual(3, count++)
-            return Result<String, TestError>(error: TestError.Third)
+            XCTAssertEqual(3, count)
+            count += 1
+            return Result<String, TestError>(error: TestError.third)
         }
         .success { (value) in
             XCTFail()
         }
         .failure { (error) in
             XCTAssertEqual("third", error!.rawValue)
-            XCTAssertEqual(4, count++)
+            XCTAssertEqual(4, count)
+            count += 1
             expectation.fulfill()
         }
         
-        deferred.reject(.Fail)
-        XCTAssertEqual(0, count++)
+        deferred.reject(.fail)
+        XCTAssertEqual(0, count)
+        count += 1
         
-        self.waitForExpectationsWithTimeout(5.0) { (error) in }
+        self.waitForExpectations(timeout: 5.0) { (error) in }
     }
     
     func testThen() {
-        let expectation = self.expectationWithDescription("testThen")
+        let expectation = self.expectation(description: "testThen")
         
         var count = 0
         
@@ -292,45 +302,51 @@ class STDeferredTest: XCTestCase {
         deferred
         .then { (value) -> String in
             XCTAssertEqual("start", value)
-            XCTAssertEqual(1, count++)
+            XCTAssertEqual(1, count)
+            count += 1
             return "first"
         }
         .then { (value) -> Result<String, TestError> in
             XCTAssertEqual("first", value)
-            XCTAssertEqual(2, count++)
+            XCTAssertEqual(2, count)
+            count += 1
             return Result<String, TestError>(value: "second")
         }
         .then { (value) -> Deferred<String, TestError> in
             XCTAssertEqual("second", value)
-            XCTAssertEqual(3, count++)
+            XCTAssertEqual(3, count)
+            count += 1
             return Deferred<String, TestError>(result: Result<String, TestError>(value: "third"))
         }
         .success { (value) in
             XCTAssertEqual("third", value)
-            XCTAssertEqual(4, count++)
+            XCTAssertEqual(4, count)
+            count += 1
             expectation.fulfill()
         }
         .failure { (error) in
             XCTFail()
         }
         
-        XCTAssertEqual(0, count++)
+        XCTAssertEqual(0, count)
+        count += 1
         deferred.resolve("start")
-        XCTAssertEqual(5, count++)
+        XCTAssertEqual(5, count)
+        count += 1
 
-        self.waitForExpectationsWithTimeout(5.0) { (error) in }
+        self.waitForExpectations(timeout: 5.0) { (error) in }
     }
     
     func testWhen() {        
-        let expectation = self.expectationWithDescription("testWhen")
+        let expectation = self.expectation(description: "testWhen")
         
         let d1 = Deferred<String, TestError>()
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, Int64(1 * NSEC_PER_SEC)), dispatch_get_main_queue()) {
+        DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + Double(Int64(1 * NSEC_PER_SEC)) / Double(NSEC_PER_SEC)) {
             d1.resolve("1 sec")
         }
 
         let d2 = Deferred<String, TestError>()
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, Int64(2 * NSEC_PER_SEC)), dispatch_get_main_queue()) {
+        DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + Double(Int64(2 * NSEC_PER_SEC)) / Double(NSEC_PER_SEC)) {
             d2.resolve("2 sec")
         }
 
@@ -341,19 +357,19 @@ class STDeferredTest: XCTestCase {
             expectation.fulfill()
         }
         
-        self.waitForExpectationsWithTimeout(5.0) { (error) in }
+        self.waitForExpectations(timeout: 5.0) { (error) in }
     }
 
     func testWhenMultiType() {
-        let expectation = self.expectationWithDescription("testWhenMultiType")
+        let expectation = self.expectation(description: "testWhenMultiType")
         
         let d1 = Deferred<String, TestError>()
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, Int64(1 * NSEC_PER_SEC)), dispatch_get_main_queue()) {
+        DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + Double(Int64(1 * NSEC_PER_SEC)) / Double(NSEC_PER_SEC)) {
             d1.resolve("1 sec")
         }
         
         let d2 = Deferred<Int, TestError>()
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, Int64(2 * NSEC_PER_SEC)), dispatch_get_main_queue()) {
+        DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + Double(Int64(2 * NSEC_PER_SEC)) / Double(NSEC_PER_SEC)) {
             d2.resolve(2)
         }
         
@@ -363,7 +379,7 @@ class STDeferredTest: XCTestCase {
             expectation.fulfill()
         }
         
-        self.waitForExpectationsWithTimeout(5.0) { (error) in }
+        self.waitForExpectations(timeout: 5.0) { (error) in }
     }
     
     func testCancel() {
@@ -406,7 +422,7 @@ class STDeferredTest: XCTestCase {
             XCTFail()
         }
         
-        deferred.reject(.Fail)
+        deferred.reject(.fail)
         deferred.cancel()
     }
     
@@ -430,13 +446,19 @@ class STDeferredTest: XCTestCase {
         .failure { (error) in
             XCTAssert(error == nil)
         }
-        .canceller { XCTAssertEqual(1, count++) }
+        .canceller {
+            XCTAssertEqual(1, count)
+            count += 1
+        }
         
         let d2 = Deferred<String, TestError>()
         .failure { (error) in
             XCTAssert(error == nil)
         }
-        .canceller { XCTAssertEqual(2, count++) }
+        .canceller {
+            XCTAssertEqual(2, count)
+            count += 1
+        }
 
         let deferred = when(d1, d2)
         .success { (s1, s2) in
@@ -444,10 +466,12 @@ class STDeferredTest: XCTestCase {
         }
         .failure { (error) in
             XCTAssert(error == nil)
-            XCTAssertEqual(3, count++)
+            XCTAssertEqual(3, count)
+            count += 1
         }
 
-        XCTAssertEqual(0, count++)
+        XCTAssertEqual(0, count)
+        count += 1
         deferred.cancel()
         XCTAssertEqual(4, count)
     }
@@ -457,7 +481,8 @@ class STDeferredTest: XCTestCase {
         
         let d1 = Deferred<String, TestError>()
         d1.canceller {
-            XCTAssertEqual(1, count++)
+            XCTAssertEqual(1, count)
+            count += 1
         }
 
         let d2 = d1.pipe { $0 }
@@ -465,10 +490,12 @@ class STDeferredTest: XCTestCase {
         
         d3.failure { (error) in
             XCTAssert(error == nil)
-            XCTAssertEqual(2, count++)
+            XCTAssertEqual(2, count)
+            count += 1
         }
 
-        XCTAssertEqual(0, count++)
+        XCTAssertEqual(0, count)
+        count += 1
         d3.cancel()
     }
     
@@ -482,10 +509,12 @@ class STDeferredTest: XCTestCase {
                 XCTFail()
             }
             .failure { _ in
-                XCTAssertEqual(2, count++)
+                XCTAssertEqual(2, count)
+                count += 1
             }
             .canceller {
-                XCTAssertEqual(1, count++)
+                XCTAssertEqual(1, count)
+                count += 1
             }
         }
         .pipe { (result) -> Result<String, TestError>? in
@@ -493,14 +522,16 @@ class STDeferredTest: XCTestCase {
             return result
         }
         
-        XCTAssertEqual(0, count++)
-        
+        XCTAssertEqual(0, count)
+        count += 1
+
         deferred
         .success { _ in
             XCTFail()
         }
         .failure { _ in
-            XCTAssertEqual(3, count++)
+            XCTAssertEqual(3, count)
+            count += 1
         }
         
         deferred.cancel()
@@ -526,28 +557,32 @@ class STDeferredTest: XCTestCase {
                 XCTFail()
             }
             .failure { _ in
-                XCTAssertEqual(2, count++)
+                XCTAssertEqual(2, count)
+                count += 1
             }
             .canceller {
-                XCTAssertEqual(1, count++)
+                XCTAssertEqual(1, count)
+                count += 1
             }
         }
         
-        XCTAssertEqual(0, count++)
-        
+        XCTAssertEqual(0, count)
+        count += 1
+
         deferred
         .success { _ in
             XCTFail()
         }
         .failure { _ in
-            XCTAssertEqual(3, count++)
+            XCTAssertEqual(3, count)
+            count += 1
         }
         
         deferred.cancel()
     }
     
     func testCancelInPipe() {
-        let expectation = self.expectationWithDescription("testCancelInPipe")
+        let expectation = self.expectation(description: "testCancelInPipe")
         
         var count = 0
         
@@ -555,19 +590,23 @@ class STDeferredTest: XCTestCase {
         
         let d1 = Deferred<Void, TestError>().resolve()
         .pipe { _ -> Deferred<Void, TestError> in
-            XCTAssertEqual(0, count++)
+            XCTAssertEqual(0, count)
+            count += 1
             return Deferred<Void, TestError>().resolve().canceller { XCTFail() }
         }
         .pipe { _ -> Deferred<Void, TestError> in
-            XCTAssertEqual(1, count++)
+            XCTAssertEqual(1, count)
+            count += 1
 
             let d = Deferred<Void, TestError>()
             .canceller {
-                XCTAssertEqual(4, count++)
+                XCTAssertEqual(4, count)
+                count += 1
             }
             
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, Int64(2 * NSEC_PER_SEC)), dispatch_get_main_queue()) {
-                XCTAssertEqual(5, count++)
+            DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + Double(Int64(2 * NSEC_PER_SEC)) / Double(NSEC_PER_SEC)) {
+                XCTAssertEqual(5, count)
+                count += 1
                 XCTAssertTrue(d.isCancelled)
                 d.resolve()
             }
@@ -587,28 +626,30 @@ class STDeferredTest: XCTestCase {
         }
         .failure { (error) in
             XCTAssert(error == nil)
-            deferred.reject(.Fail)
+            deferred.reject(.fail)
             expectation.fulfill()
         }
         
         deferred.canceller {
-            XCTAssertEqual(3, count++)
+            XCTAssertEqual(3, count)
+            count += 1
             setup.cancel()
         }
 
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, Int64(1 * NSEC_PER_SEC)), dispatch_get_main_queue()) {
-            XCTAssertEqual(2, count++)
+        DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + Double(Int64(1 * NSEC_PER_SEC)) / Double(NSEC_PER_SEC)) {
+            XCTAssertEqual(2, count)
+            count += 1
             deferred.cancel()
         }
 
-        self.waitForExpectationsWithTimeout(5.0) { _ in }
+        self.waitForExpectations(timeout: 5.0) { _ in }
     }
     
     func testInitClosure() {
-        let expectation = self.expectationWithDescription("testInitClosure")
+        let expectation = self.expectation(description: "testInitClosure")
         
         Deferred<String, TestError> { (resolve, _, _) in
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, Int64(1 * NSEC_PER_SEC)), dispatch_get_main_queue()) {
+            DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + Double(Int64(1 * NSEC_PER_SEC)) / Double(NSEC_PER_SEC)) {
                 resolve("success")
             }
         }
@@ -620,8 +661,8 @@ class STDeferredTest: XCTestCase {
         }
 
         Deferred<String, TestError> { (_, reject, _) in
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, Int64(1 * NSEC_PER_SEC)), dispatch_get_main_queue()) {
-                reject(.Fail)
+            DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + Double(Int64(1 * NSEC_PER_SEC)) / Double(NSEC_PER_SEC)) {
+                reject(.fail)
             }
         }
         .success { (value) in
@@ -632,7 +673,7 @@ class STDeferredTest: XCTestCase {
         }
 
         Deferred<String, TestError> { (_, _, cancel) in
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, Int64(2 * NSEC_PER_SEC)), dispatch_get_main_queue()) {
+            DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + Double(Int64(2 * NSEC_PER_SEC)) / Double(NSEC_PER_SEC)) {
                 cancel()
             }
         }
@@ -644,7 +685,7 @@ class STDeferredTest: XCTestCase {
             expectation.fulfill()
         }
 
-        self.waitForExpectationsWithTimeout(5.0) { _ in }
+        self.waitForExpectations(timeout: 5.0) { _ in }
     }
     
     func testSync() {
@@ -667,7 +708,7 @@ class STDeferredTest: XCTestCase {
         .failure { (error) in
             XCTAssertEqual("fail", error!.rawValue)
         }
-        d2.reject(.Fail)
+        d2.reject(.fail)
         
         let d3 = Deferred<String, TestError>()
         Deferred<String, TestError>().sync(d3)
